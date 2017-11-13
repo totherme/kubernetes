@@ -5,16 +5,24 @@ import (
 	"testing"
 )
 
-func TestCmdHelloWorldHasSaneCommandName(t *testing.T) {
+func TestCmdHelloWorldHasSaneMetaData(t *testing.T) {
 	cmd := NewCmdHelloWorld(nil)
-	use := cmd.Use
 
 	if cmd == nil {
 		t.Errorf("Expected NewCmdHelloWorld() not to return nil")
 	}
 
+	use := cmd.Use
 	if use != "hello-world" {
 		t.Errorf("Expected the command to register as 'hello-world', instead registered as '%s'", use)
+	}
+
+	if cmd.Short == "" {
+		t.Errorf("Expected the command to have a short help text")
+	}
+
+	if cmd.Long == "" {
+		t.Errorf("Expected the command to have a long help text")
 	}
 }
 
