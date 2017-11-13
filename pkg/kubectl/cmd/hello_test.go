@@ -10,6 +10,7 @@ func TestCmdHelloWorldHasSaneMetaData(t *testing.T) {
 
 	if cmd == nil {
 		t.Errorf("Expected NewCmdHelloWorld() not to return nil")
+		t.FailNow()
 	}
 
 	use := cmd.Use
@@ -40,3 +41,26 @@ func TestCmdHelloWorldCanSayHello(t *testing.T) {
 		t.Errorf("Expected sayHello() to produce '%s', got '%s' instead", expected, actual)
 	}
 }
+
+func TestCmdHelloKubernetesHasSaneMetaData(t *testing.T) {
+	cmd := NewCmdHelloKubernetes(nil)
+
+	if cmd == nil {
+		t.Errorf("Expected NewCmdHelloKubernetes() not to return nil")
+		t.FailNow()
+	}
+
+	use := cmd.Use
+	if use != "hello-kubernetes" {
+		t.Errorf("Expected the command to register as 'hello-kubernetes', instead registered as '%s'", use)
+	}
+
+	if cmd.Short == "" {
+		t.Errorf("Expected the command to have a short help text")
+	}
+
+	if cmd.Long == "" {
+		t.Errorf("Expected the command to have a long help text")
+	}
+}
+
