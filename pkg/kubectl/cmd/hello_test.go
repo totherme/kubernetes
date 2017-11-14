@@ -105,6 +105,27 @@ func TestHelloKubernetesWorksWithAYAMLFile(t *testing.T) {
 	}
 }
 
+func TestNewCmdHelloKubernetesWorksWithMultipleFiles(t *testing.T) {
+	var b bytes.Buffer
+
+	cmd := NewCmdHelloKubernetes(&b, nil, dummyErrorHandler)
+	if cmd == nil {
+		t.Errorf("Expected NewCmdHelloKubernetes() not to return nil")
+		t.FailNow()
+	}
+
+	cmd.Flags().Set("filename", "../../../examples/guestbook-go/redis-master-controller.json")
+	cmd.Flags().Set("filename", "../../../examples/guestbook/legacy/redis-master-controller.yaml")
+	cmd.Run(cmd, []string{})
+
+	actual := b.String()
+	expected := "Hello ReplicationController redis-master\nHello ReplicationController redis-master\n"
+	if actual != expected {
+		t.Errorf("Expected output %s, got: %s", expected, actual)
+	}
+
+}
+
 func TestNewCmdHelloKubernetesGracefullyFailsWithNoFiles(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer

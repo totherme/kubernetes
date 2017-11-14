@@ -60,19 +60,21 @@ func NewCmdHelloKubernetes(out, errOut io.Writer, handler FailureHandler) *cobra
 				return
 			}
 
-			file, err := os.Open(options.Filenames[0])
-			defer file.Close()
-			cmdutil.CheckErr(err)
+			for _, filename := range options.Filenames {
+				file, err := os.Open(filename)
+				defer file.Close()
+				cmdutil.CheckErr(err)
 
-			decoder := yaml.NewYAMLOrJSONDecoder(file, 256)
-			var object map[string]interface{}
-			err = decoder.Decode(&object)
-			cmdutil.CheckErr(err)
+				decoder := yaml.NewYAMLOrJSONDecoder(file, 256)
+				var object map[string]interface{}
+				err = decoder.Decode(&object)
+				cmdutil.CheckErr(err)
 
-			name := object["metadata"].(map[string]interface{})["name"]
-			kind := object["kind"]
+				name := object["metadata"].(map[string]interface{})["name"]
+				kind := object["kind"]
 
-			fmt.Fprintf(out, "Hello %s %s\n", kind, name)
+				fmt.Fprintf(out, "Hello %s %s\n", kind, name)
+			}
 		},
 	}
 
