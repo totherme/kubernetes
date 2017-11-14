@@ -2,7 +2,10 @@ package cmd
 
 import (
 	"bytes"
+	"strings"
 	"testing"
+
+	"github.com/spf13/cobra"
 )
 
 func TestCmdHelloWorldHasSaneMetaData(t *testing.T) {
@@ -43,7 +46,7 @@ func TestCmdHelloWorldCanSayHello(t *testing.T) {
 }
 
 func TestCmdHelloKubernetesHasSaneMetaData(t *testing.T) {
-	cmd := NewCmdHelloKubernetes(nil)
+	cmd := NewCmdHelloKubernetes(nil, nil, dummyErrorHandler)
 
 	if cmd == nil {
 		t.Errorf("Expected NewCmdHelloKubernetes() not to return nil")
@@ -51,7 +54,7 @@ func TestCmdHelloKubernetesHasSaneMetaData(t *testing.T) {
 	}
 
 	use := cmd.Use
-	if use != "hello-kubernetes" {
+	if !strings.HasPrefix(use, "hello-kubernetes ") {
 		t.Errorf("Expected the command to register as 'hello-kubernetes', instead registered as '%s'", use)
 	}
 
@@ -67,17 +70,14 @@ func TestCmdHelloKubernetesHasSaneMetaData(t *testing.T) {
 func TestHelloKubernetesWorksWithAJSONFile(t *testing.T) {
 	var b bytes.Buffer
 
-	cmd := NewCmdHelloKubernetes(&b)
+	cmd := NewCmdHelloKubernetes(&b, nil, dummyErrorHandler)
 	if cmd == nil {
 		t.Errorf("Expected NewCmdHelloKubernetes() not to return nil")
 		t.FailNow()
 	}
 
 	cmd.Flags().Set("filename", "../../../examples/guestbook-go/redis-master-controller.json")
-	err := cmd.RunE(cmd, []string{})
-	if err != nil {
-		t.Errorf("Expected to be able to run the command without error. Got: %s", err)
-	}
+	cmd.Run(cmd, []string{})
 
 	actual := b.String()
 	expected := "Hello ReplicationController redis-master\n"
@@ -89,21 +89,44 @@ func TestHelloKubernetesWorksWithAJSONFile(t *testing.T) {
 func TestHelloKubernetesWorksWithAYAMLFile(t *testing.T) {
 	var b bytes.Buffer
 
-	cmd := NewCmdHelloKubernetes(&b)
+	cmd := NewCmdHelloKubernetes(&b, nil, dummyErrorHandler)
 	if cmd == nil {
 		t.Errorf("Expected NewCmdHelloKubernetes() not to return nil")
 		t.FailNow()
 	}
 
 	cmd.Flags().Set("filename", "../../../examples/guestbook/legacy/redis-master-controller.yaml")
-	err := cmd.RunE(cmd, []string{})
-	if err != nil {
-		t.Errorf("Expected to be able to run the command without error. Got: %s", err)
-	}
+	cmd.Run(cmd, []string{})
 
 	actual := b.String()
 	expected := "Hello ReplicationController redis-master\n"
 	if actual != expected {
 		t.Errorf("Expected output %s, got: %s", expected, actual)
 	}
+}
+
+func TestNewCmdHelloKubernetesGracefullyFailsWithNoFiles(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	var handlerCallCount int
+
+	spyHandler := func(_ *cobra.Command, _ []string) {
+		handlerCallCount += 1
+	}
+
+	cmd := NewCmdHelloKubernetes(&stdout, &stderr, spyHandler)
+	if cmd == nil {
+		t.Errorf("Expected NewCmdHelloKubernetes() not to return nil")
+		t.FailNow()
+	}
+
+	cmd.Run(cmd, []string{})
+	if handlerCallCount != 1 {
+		t.Errorf("Expected HelloKubernetes to call the error handler when no arguments are supplied")
+	}
+
+}
+
+func dummyErrorHandler(_ *cobra.Command, _ []string) {
 }

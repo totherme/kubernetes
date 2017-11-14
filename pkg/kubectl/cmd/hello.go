@@ -15,8 +15,8 @@ import (
 )
 
 var (
-	helloWorldMsg  string = "Hello World\n"
-	helloWorldVerb string = "hello-world"
+	helloWorldMsg   string = "Hello World\n"
+	helloWorldUsage string = "hello-world"
 
 	helloWorldLong = templates.LongDesc(i18n.T(`
 		Print a friendly message on the console, to welcome the user into the
@@ -25,8 +25,8 @@ var (
 		This exercise comes from:
 		https://github.com/kubernetes/community/blob/master/sig-cli/CONTRIBUTING.md`))
 
-	helloKubernetesVerb string = "hello-kubernetes"
-	helloKubernetesLong string = templates.LongDesc(i18n.T(`
+	helloKubernetesUsage string = "hello-kubernetes -f FILENAME"
+	helloKubernetesLong  string = templates.LongDesc(i18n.T(`
 		A friendly way of finding out the kind and name of some resource contained in a file.
 
 		Say which file(s) you want to inspect by using the -f flags. This will print their kinds and names.
@@ -35,7 +35,7 @@ var (
 
 func NewCmdHelloWorld(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   helloWorldVerb,
+		Use:   helloWorldUsage,
 		Short: i18n.T("says hello to the world"),
 		Long:  helloWorldLong,
 		Run: func(cmd *cobra.Command, args []string) {
@@ -45,36 +45,39 @@ func NewCmdHelloWorld(out io.Writer) *cobra.Command {
 	return cmd
 }
 
-func NewCmdHelloKubernetes(out io.Writer) *cobra.Command {
+type FailureHandler func(c *cobra.Command, args []string)
+
+func NewCmdHelloKubernetes(out, errOut io.Writer, handler FailureHandler) *cobra.Command {
 	var options resource.FilenameOptions
 
 	cmd := &cobra.Command{
-		Use:   helloKubernetesVerb,
+		Use:   helloKubernetesUsage,
 		Short: i18n.T("says hello to some k8s resourse"),
 		Long:  helloKubernetesLong,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		Run: func(cmd *cobra.Command, args []string) {
+			if cmdutil.IsFilenameSliceEmpty(options.Filenames) {
+				handler(cmd, args)
+				return
+			}
+
 			file, err := os.Open(options.Filenames[0])
 			defer file.Close()
-			if err != nil {
-				return fmt.Errorf("could not open file in HelloKubernetes: %s", err)
-			}
+			cmdutil.CheckErr(err)
 
 			decoder := yaml.NewYAMLOrJSONDecoder(file, 256)
 			var object map[string]interface{}
 			err = decoder.Decode(&object)
-			if err != nil {
-				return fmt.Errorf("could not decode input file in HelloKubernetes: %s", err)
-			}
+			cmdutil.CheckErr(err)
 
 			name := object["metadata"].(map[string]interface{})["name"]
 			kind := object["kind"]
 
 			fmt.Fprintf(out, "Hello %s %s\n", kind, name)
-			return nil
 		},
 	}
 
 	cmdutil.AddFilenameOptionFlags(cmd, &options, "do awesome things")
+	cmd.MarkFlagRequired("filename")
 
 	return cmd
 }

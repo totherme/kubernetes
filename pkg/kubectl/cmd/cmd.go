@@ -247,7 +247,7 @@ func NewKubectlCommand(f cmdutil.Factory, in io.Reader, out, err io.Writer) *cob
 				NewCmdExposeService(f, out),
 				NewCmdRun(f, in, out, err),
 				NewCmdHelloWorld(out),
-				NewCmdHelloKubernetes(out),
+				NewCmdHelloKubernetes(out, err, cmdutil.DefaultSubCommandRun(err)),
 				set.NewCmdSet(f, in, out, err),
 				deprecatedAlias("run-container", NewCmdRun(f, in, out, err)),
 			},
