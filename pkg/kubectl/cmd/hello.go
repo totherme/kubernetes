@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 
-	"io/ioutil"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -12,7 +11,7 @@ import (
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
 	"k8s.io/kubernetes/pkg/kubectl/util/i18n"
-	"k8s.io/kubernetes/staging/src/k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/kubernetes/staging/src/k8s.io/apimachinery/pkg/util/yaml"
 )
 
 var (
@@ -59,20 +58,18 @@ func NewCmdHelloKubernetes(out io.Writer) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("could not open file in HelloKubernetes: %s", err)
 			}
-			bytes, err := ioutil.ReadAll(file)
+
+			decoder := yaml.NewYAMLOrJSONDecoder(file, 256)
+			var object map[string]interface{}
+			err = decoder.Decode(&object)
 			if err != nil {
-				return fmt.Errorf("could not read file in HelloKubernets: %s", err)
-			}
-			object, kind, err := unstructured.UnstructuredJSONScheme.Decode(bytes, nil, nil)
-			if err != nil {
-				return fmt.Errorf("could not decode file in HelloKubernetes: %s", err)
-			}
-			unstructuredObject, ok := object.(*unstructured.Unstructured)
-			if !ok {
-				return fmt.Errorf("decoded file in HelloKubernetes was the wrong type for me to get its name")
+				return fmt.Errorf("could not decode input file in HelloKubernetes: %s", err)
 			}
 
-			fmt.Fprintf(out, "Hello %s %s", kind.Kind, unstructuredObject.GetName())
+			name := object["metadata"].(map[string]interface{})["name"]
+			kind := object["kind"]
+
+			fmt.Fprintf(out, "Hello %s %s\n", kind, name)
 			return nil
 		},
 	}

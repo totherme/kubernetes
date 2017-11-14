@@ -80,7 +80,29 @@ func TestHelloKubernetesWorksWithAJSONFile(t *testing.T) {
 	}
 
 	actual := b.String()
-	expected := "Hello ReplicationController redis-master"
+	expected := "Hello ReplicationController redis-master\n"
+	if actual != expected {
+		t.Errorf("Expected output %s, got: %s", expected, actual)
+	}
+}
+
+func TestHelloKubernetesWorksWithAYAMLFile(t *testing.T) {
+	var b bytes.Buffer
+
+	cmd := NewCmdHelloKubernetes(&b)
+	if cmd == nil {
+		t.Errorf("Expected NewCmdHelloKubernetes() not to return nil")
+		t.FailNow()
+	}
+
+	cmd.Flags().Set("filename", "../../../examples/guestbook/legacy/redis-master-controller.yaml")
+	err := cmd.RunE(cmd, []string{})
+	if err != nil {
+		t.Errorf("Expected to be able to run the command without error. Got: %s", err)
+	}
+
+	actual := b.String()
+	expected := "Hello ReplicationController redis-master\n"
 	if actual != expected {
 		t.Errorf("Expected output %s, got: %s", expected, actual)
 	}
