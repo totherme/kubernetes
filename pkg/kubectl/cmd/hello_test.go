@@ -64,3 +64,24 @@ func TestCmdHelloKubernetesHasSaneMetaData(t *testing.T) {
 	}
 }
 
+func TestHelloKubernetesWorksWithAJSONFile(t *testing.T) {
+	var b bytes.Buffer
+
+	cmd := NewCmdHelloKubernetes(&b)
+	if cmd == nil {
+		t.Errorf("Expected NewCmdHelloKubernetes() not to return nil")
+		t.FailNow()
+	}
+
+	cmd.Flags().Set("filename", "../../../examples/guestbook-go/redis-master-controller.json")
+	err := cmd.RunE(cmd, []string{})
+	if err != nil {
+		t.Errorf("Expected to be able to run the command without error. Got: %s", err)
+	}
+
+	actual := b.String()
+	expected := "Hello ReplicationController redis-master"
+	if actual != expected {
+		t.Errorf("Expected output %s, got: %s", expected, actual)
+	}
+}
