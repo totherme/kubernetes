@@ -70,8 +70,22 @@ func NewCmdHelloKubernetes(out, errOut io.Writer, handler FailureHandler) *cobra
 				err = decoder.Decode(&object)
 				cmdutil.CheckErr(err)
 
-				name := object["metadata"].(map[string]interface{})["name"]
-				kind := object["kind"]
+				metadata, ok := object["metadata"]
+				if !ok {
+					cmdutil.CheckErr(fmt.Errorf("Malformed file (missing metadata block): %s\n", filename))
+				}
+				metadataMap, ok := metadata.(map[string]interface{})
+				if !ok {
+					cmdutil.CheckErr(fmt.Errorf("Malformed file (malformed metadata block): %s\n", filename))
+				}
+				name, ok := metadataMap["name"]
+				if !ok {
+					cmdutil.CheckErr(fmt.Errorf("Malformed file (missing name): %s\n", filename))
+				}
+				kind, ok := object["kind"]
+				if !ok {
+					cmdutil.CheckErr(fmt.Errorf("Malformed file (missing kind): %s\n", filename))
+				}
 
 				fmt.Fprintf(out, "Hello %s %s\n", kind, name)
 			}
