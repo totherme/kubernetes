@@ -3,9 +3,9 @@ package cmd
 import (
 	"fmt"
 	"io"
-
 	"os"
 
+	"github.com/docker/docker/pkg/ioutils"
 	"github.com/spf13/cobra"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
@@ -47,7 +47,7 @@ func NewCmdHelloWorld(out io.Writer) *cobra.Command {
 
 type FailureHandler func(c *cobra.Command, args []string)
 
-func NewCmdHelloKubernetes(out, errOut io.Writer, handler FailureHandler) *cobra.Command {
+func NewCmdHelloKubernetes(f cmdutil.Factory, out, errOut io.Writer, handler FailureHandler) *cobra.Command {
 	var options resource.FilenameOptions
 
 	cmd := &cobra.Command{
@@ -89,10 +89,18 @@ func NewCmdHelloKubernetes(out, errOut io.Writer, handler FailureHandler) *cobra
 
 				fmt.Fprintf(out, "Hello %s %s\n", kind, name)
 			}
+
+			cmdutil.AddValidateFlags(cmd)
+			cmdutil.AddDryRunFlag(cmd)
+			cmdutil.AddOutputFlags(cmd)
+			cmdutil.AddApplyAnnotationFlags(cmd)
+			cmdutil.AddRecordFlag(cmd)
+
+			cmdutil.CheckErr(RunCreate(f, cmd, &ioutils.NopWriter{}, errOut, &CreateOptions{FilenameOptions: options}))
 		},
 	}
 
-	cmdutil.AddFilenameOptionFlags(cmd, &options, "do awesome things")
+	cmdutil.AddFilenameOptionFlags(cmd, &options, "File describing resource to create")
 	cmd.MarkFlagRequired("filename")
 
 	return cmd
