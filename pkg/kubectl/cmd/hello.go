@@ -3,15 +3,12 @@ package cmd
 import (
 	"fmt"
 	"io"
-	"os"
 
-	"github.com/docker/docker/pkg/ioutils"
 	"github.com/spf13/cobra"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
 	"k8s.io/kubernetes/pkg/kubectl/util/i18n"
-	"k8s.io/kubernetes/staging/src/k8s.io/apimachinery/pkg/util/yaml"
 )
 
 var (
@@ -48,59 +45,60 @@ func NewCmdHelloWorld(out io.Writer) *cobra.Command {
 type FailureHandler func(c *cobra.Command, args []string)
 
 func NewCmdHelloKubernetes(f cmdutil.Factory, out, errOut io.Writer, handler FailureHandler) *cobra.Command {
-	var options resource.FilenameOptions
+	var filesOpts resource.FilenameOptions
 
 	cmd := &cobra.Command{
 		Use:   helloKubernetesUsage,
 		Short: i18n.T("says hello to some k8s resourse"),
 		Long:  helloKubernetesLong,
 		Run: func(cmd *cobra.Command, args []string) {
-			if cmdutil.IsFilenameSliceEmpty(options.Filenames) {
+			if cmdutil.IsFilenameSliceEmpty(filesOpts.Filenames) {
 				handler(cmd, args)
 				return
 			}
 
-			for _, filename := range options.Filenames {
-				file, err := os.Open(filename)
-				defer file.Close()
-				cmdutil.CheckErr(err)
+			schema, err := f.Validator(true)
+			cmdutil.CheckErr(err)
 
-				decoder := yaml.NewYAMLOrJSONDecoder(file, 256)
-				var object map[string]interface{}
-				err = decoder.Decode(&object)
-				cmdutil.CheckErr(err)
+			cmdNamespace, enforceNamespace, err := f.DefaultNamespace()
+			cmdutil.CheckErr(err)
 
-				metadata, ok := object["metadata"]
-				if !ok {
-					cmdutil.CheckErr(fmt.Errorf("Malformed file (missing metadata block): %s\n", filename))
-				}
-				metadataMap, ok := metadata.(map[string]interface{})
-				if !ok {
-					cmdutil.CheckErr(fmt.Errorf("Malformed file (malformed metadata block): %s\n", filename))
-				}
-				name, ok := metadataMap["name"]
-				if !ok {
-					cmdutil.CheckErr(fmt.Errorf("Malformed file (missing name): %s\n", filename))
-				}
-				kind, ok := object["kind"]
-				if !ok {
-					cmdutil.CheckErr(fmt.Errorf("Malformed file (missing kind): %s\n", filename))
+			builder := f.NewUnstructuredBuilder()
+			builder.Schema(schema)
+			builder.ContinueOnError()
+			builder.NamespaceParam(cmdNamespace)
+			builder.DefaultNamespace()
+			builder.FilenameParam(enforceNamespace, &filesOpts)
+			builder.Flatten()
+
+			result := builder.Do()
+			cmdutil.CheckErr(result.Err())
+
+			err = result.Visit(func(info *resource.Info, err error) error {
+				if err != nil {
+					return err
 				}
 
-				fmt.Fprintf(out, "Hello %s %s\n", kind, name)
-			}
+				if err := createAndRefresh(info); err != nil {
+					return err
+				}
 
-			cmdutil.AddValidateFlags(cmd)
-			cmdutil.AddDryRunFlag(cmd)
-			cmdutil.AddOutputFlags(cmd)
-			cmdutil.AddApplyAnnotationFlags(cmd)
-			cmdutil.AddRecordFlag(cmd)
+				kind, err := info.Mapping.Kind(info.Object)
+				if err != nil {
+					kind = "<unkn>"
+				}
 
-			cmdutil.CheckErr(RunCreate(f, cmd, &ioutils.NopWriter{}, errOut, &CreateOptions{FilenameOptions: options}))
+				// we could use cmdutil.PrintSuccess() here, but that has more dependencies which we don't care
+				// for for now.
+				fmt.Fprintf(out, "Hello %s %s\n", kind, info.Name)
+
+				return nil
+			})
+			cmdutil.CheckErr(err)
 		},
 	}
 
-	cmdutil.AddFilenameOptionFlags(cmd, &options, "File describing resource to create")
+	cmdutil.AddFilenameOptionFlags(cmd, &filesOpts, "File describing resource to create")
 	cmd.MarkFlagRequired("filename")
 
 	return cmd

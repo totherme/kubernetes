@@ -6,9 +6,14 @@ import (
 	"strings"
 	"testing"
 
+	"fmt"
+
 	"github.com/spf13/cobra"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/rest/fake"
+	"k8s.io/kubernetes/pkg/apis/core"
 	cmdtesting "k8s.io/kubernetes/pkg/kubectl/cmd/testing"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 )
@@ -72,11 +77,29 @@ func TestCmdHelloKubernetesHasSaneMetaData(t *testing.T) {
 	}
 }
 
-func TestHelloKubernetesWorksWithAJSONFile(t *testing.T) {
+func TestHelloKubernetesWorksWithAService(t *testing.T) {
 	var b bytes.Buffer
 
-	initTestErrorHandler(t)
-	f, _ := setupHelloKubernetesTestFactory()
+	file := "../../../examples/cluster-dns/dns-backend-service.yaml"
+	name := "dns-backend"
+	kind := "Service"
+
+	f, _ := setupHelloKubernetesTestFactory(func(req *http.Request, codec runtime.Codec) (*http.Response, error) {
+		_, service, _ := testData()
+		service.Items[0].Name = name
+
+		switch p, m := req.URL.Path, req.Method; {
+		case p == "/namespaces/test/services" && m == http.MethodPost:
+			return &http.Response{
+				StatusCode: http.StatusCreated,
+				Header:     defaultHeader(),
+				Body:       objBody(codec, &service.Items[0]),
+			}, nil
+		default:
+			t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)
+			return nil, nil
+		}
+	})
 
 	cmd := NewCmdHelloKubernetes(f, &b, nil, dummyErrorHandler)
 	if cmd == nil {
@@ -84,21 +107,39 @@ func TestHelloKubernetesWorksWithAJSONFile(t *testing.T) {
 		t.FailNow()
 	}
 
-	cmd.Flags().Set("filename", "../../../examples/guestbook-go/redis-master-controller.json")
+	cmd.Flags().Set("filename", file)
 	cmd.Run(cmd, []string{})
 
 	actual := b.String()
-	expected := "Hello ReplicationController redis-master\n"
+	expected := fmt.Sprintf("Hello %s %s\n", kind, name)
 	if actual != expected {
 		t.Errorf("Expected output %s, got: %s", expected, actual)
 	}
 }
 
-func TestHelloKubernetesWorksWithAYAMLFile(t *testing.T) {
+func TestHelloKubernetesWorksWithAReplicationController(t *testing.T) {
 	var b bytes.Buffer
 
-	initTestErrorHandler(t)
-	f, _ := setupHelloKubernetesTestFactory()
+	filename := "../../../examples/guestbook/legacy/redis-master-controller.yaml"
+	name := "redis-master"
+	kind := "ReplicationController"
+
+	f, _ := setupHelloKubernetesTestFactory(func(req *http.Request, codec runtime.Codec) (*http.Response, error) {
+		_, _, rc := testData()
+		rc.Items[0].Name = name
+
+		switch p, m := req.URL.Path, req.Method; {
+		case p == "/namespaces/test/replicationcontrollers" && m == http.MethodPost:
+			return &http.Response{
+				StatusCode: http.StatusCreated,
+				Header:     defaultHeader(),
+				Body:       objBody(codec, &rc.Items[0]),
+			}, nil
+		default:
+			t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)
+			return nil, nil
+		}
+	})
 
 	cmd := NewCmdHelloKubernetes(f, &b, nil, dummyErrorHandler)
 	if cmd == nil {
@@ -106,11 +147,11 @@ func TestHelloKubernetesWorksWithAYAMLFile(t *testing.T) {
 		t.FailNow()
 	}
 
-	cmd.Flags().Set("filename", "../../../examples/guestbook/legacy/redis-master-controller.yaml")
+	cmd.Flags().Set("filename", filename)
 	cmd.Run(cmd, []string{})
 
 	actual := b.String()
-	expected := "Hello ReplicationController redis-master\n"
+	expected := fmt.Sprintf("Hello %s %s\n", kind, name)
 	if actual != expected {
 		t.Errorf("Expected output %s, got: %s", expected, actual)
 	}
@@ -119,8 +160,48 @@ func TestHelloKubernetesWorksWithAYAMLFile(t *testing.T) {
 func TestNewCmdHelloKubernetesWorksWithMultipleFiles(t *testing.T) {
 	var b bytes.Buffer
 
-	initTestErrorHandler(t)
-	f, _ := setupHelloKubernetesTestFactory()
+	filename1 := "../../../examples/guestbook-go/redis-master-controller.json"
+	filename2 := "../../../examples/guestbook/legacy/redis-master-controller.yaml"
+	name1 := "test replication controller 1"
+	name2 := "test replication controller 2"
+	//kind1 := "ReplicationController"
+	//kind2 := "ReplicationController"
+
+	testReplicationControllers := &core.ReplicationControllerList{
+		ListMeta: metav1.ListMeta{
+			ResourceVersion: "17",
+		},
+		Items: []core.ReplicationController{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: name1, Namespace: "test", ResourceVersion: "18"},
+				Spec: core.ReplicationControllerSpec{
+					Replicas: 1,
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: name2, Namespace: "test", ResourceVersion: "28"},
+				Spec: core.ReplicationControllerSpec{
+					Replicas: 2,
+				},
+			},
+		},
+	}
+
+	whichOneToReturn := -1
+	f, _ := setupHelloKubernetesTestFactory(func(req *http.Request, codec runtime.Codec) (*http.Response, error) {
+		switch p, m := req.URL.Path, req.Method; {
+		case p == "/namespaces/test/replicationcontrollers" && m == http.MethodPost:
+			whichOneToReturn += 1
+			return &http.Response{
+				StatusCode: http.StatusCreated,
+				Header:     defaultHeader(),
+				Body:       objBody(codec, &testReplicationControllers.Items[whichOneToReturn]),
+			}, nil
+		default:
+			t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)
+			return nil, nil
+		}
+	})
 
 	cmd := NewCmdHelloKubernetes(f, &b, nil, dummyErrorHandler)
 	if cmd == nil {
@@ -128,12 +209,12 @@ func TestNewCmdHelloKubernetesWorksWithMultipleFiles(t *testing.T) {
 		t.FailNow()
 	}
 
-	cmd.Flags().Set("filename", "../../../examples/guestbook-go/redis-master-controller.json")
-	cmd.Flags().Set("filename", "../../../examples/guestbook/legacy/redis-master-controller.yaml")
+	cmd.Flags().Set("filename", filename1)
+	cmd.Flags().Set("filename", filename2)
 	cmd.Run(cmd, []string{})
 
 	actual := b.String()
-	expected := "Hello ReplicationController redis-master\nHello ReplicationController redis-master\n"
+	expected := "Hello ReplicationController " + name1 + "\nHello ReplicationController " + name2 + "\n"
 	if actual != expected {
 		t.Errorf("Expected output %s, got: %s", expected, actual)
 	}
@@ -162,39 +243,19 @@ func TestNewCmdHelloKubernetesGracefullyFailsWithNoFiles(t *testing.T) {
 	}
 }
 
-func TestNewCmdHelloKubernetesCallsTheServerWithTheFile(t *testing.T) {
-	initTestErrorHandler(t)
-
-	f, fakeRestClient := setupHelloKubernetesTestFactory()
-
-	buf := bytes.NewBuffer([]byte{})
-	errBuf := bytes.NewBuffer([]byte{})
-
-	cmd := NewCmdHelloKubernetes(f, buf, errBuf, dummyErrorHandler)
-	cmd.Flags().Set("filename", "../../../examples/guestbook/legacy/redis-master-controller.yaml")
-
-	cmd.Run(cmd, []string{})
-
-	if &fakeRestClient.Req == nil {
-		t.Errorf("Expected rest client to be used")
-	}
+func dummyErrorHandler(_ *cobra.Command, _ []string) {
 }
 
-func setupHelloKubernetesTestFactory() (cmdutil.Factory, fake.RESTClient) {
-	_, _, rc := testData()
-	rc.Items[0].Name = "redis-master-controller"
+type responder func(req *http.Request, codec runtime.Codec) (*http.Response, error)
 
+func setupHelloKubernetesTestFactory(resCreator responder) (cmdutil.Factory, fake.RESTClient) {
 	f, tf, codec, _ := cmdtesting.NewAPIFactory()
 
 	fakeRestClient := &fake.RESTClient{
 		GroupVersion:         schema.GroupVersion{Version: "v1"},
 		NegotiatedSerializer: unstructuredSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
-			return &http.Response{
-				StatusCode: http.StatusCreated,
-				Header:     defaultHeader(),
-				Body:       objBody(codec, &rc.Items[0]),
-			}, nil
+			return resCreator(req, codec)
 		}),
 	}
 
@@ -203,7 +264,4 @@ func setupHelloKubernetesTestFactory() (cmdutil.Factory, fake.RESTClient) {
 	tf.Namespace = "test"
 
 	return f, *fakeRestClient
-}
-
-func dummyErrorHandler(_ *cobra.Command, _ []string) {
 }
