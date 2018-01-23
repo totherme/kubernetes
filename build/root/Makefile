@@ -290,9 +290,27 @@ ifeq ($(PRINT_HELP),y)
 test-cmd:
 	@echo "$$TEST_CMD_HELP_INFO"
 else
-test-cmd: generated_files
+test-cmd: binaries-integration generated_files
 	hack/make-rules/test-kubeadm-cmd.sh
 	hack/make-rules/test-cmd.sh
+endif
+
+define BINARIES_INTERGRATION_HELP_INFO
+# Run the binaries integration tests.
+#
+# This will internally compile some artefacts and run tests against those.
+#
+# Example
+#   make binaries-integration
+endef
+.PHONY: binaries-integration
+ifeq ($(PRINT_HELP),y)
+binaries-integration:
+	@echo "$$BINARIES_INTERGRATION_HELP_INFO"
+else
+binaries-integration:
+	$(MAKE) WHAT="cmd/kube-apiserver cmd/kubectl"
+	go test ./test/binaries-integration/...
 endif
 
 define CLEAN_HELP_INFO
