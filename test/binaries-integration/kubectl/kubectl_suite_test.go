@@ -205,3 +205,22 @@ func readToString(r io.Reader) string {
 	ExpectWithOffset(2, err).NotTo(HaveOccurred())
 	return string(b)
 }
+
+func ContainAll(wanted ...string) types.GomegaMatcher {
+	matchers := make([]types.GomegaMatcher, len(wanted))
+	for i, s := range wanted {
+		matchers[i] = ContainSubstring(s)
+	}
+	return And(matchers...)
+}
+
+func HaveEvents() types.GomegaMatcher {
+	return Or(
+		ContainSubstring("No events."),
+		ContainSubstring("Events:"),
+	)
+}
+
+func NotHaveEvents() types.GomegaMatcher {
+	return Not(HaveEvents())
+}
