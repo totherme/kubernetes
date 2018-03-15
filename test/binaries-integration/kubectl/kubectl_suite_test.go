@@ -12,6 +12,7 @@ import (
 	"github.com/kubernetes-sig-testing/frameworks/integration"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/types"
 )
 
 func TestKubectl(t *testing.T) {
@@ -129,16 +130,24 @@ const (
 	jsonPathTemplate templateType = "jsonpath"
 )
 
+type kubeCtlTemplate struct {
+	tmplType   templateType
+	tmplString string
+}
+
 type testKubeCtl struct {
 	kubeCtl  *integration.KubeCtl
-	template string
+	template kubeCtlTemplate
 }
 
 func (k *testKubeCtl) Run(args ...string) (string, string) {
 	callArgs := []string{}
 	callArgs = append(callArgs, args...)
-	if k.template != "" {
-		callArgs = append(callArgs, "-o", k.template)
+	if k.template != (kubeCtlTemplate{}) {
+		callArgs = append(
+			callArgs,
+			"-o", fmt.Sprintf("%s=%s", k.template.tmplType, k.template.tmplString),
+		)
 	}
 
 	stdout, stderr, err := k.kubeCtl.Run(callArgs...)
@@ -146,22 +155,31 @@ func (k *testKubeCtl) Run(args ...string) (string, string) {
 	return readToString(stdout), readToString(stderr)
 }
 
-func (k *testKubeCtl) WithTemplate(ttype templateType, tmpl string) *testKubeCtl {
+func (k *testKubeCtl) SetTmpl(tmpl kubeCtlTemplate) *testKubeCtl {
 	clone := &testKubeCtl{
 		kubeCtl:  k.kubeCtl,
-		template: fmt.Sprintf("%s=%s", ttype, tmpl),
+		template: tmpl,
 	}
 	return clone
 }
 
-func (k *testKubeCtl) RunGoTmpl(tmpl string, args ...string) string {
-	o, _ := k.WithTemplate(goTemplate, tmpl).Run(args...)
-	return o
+func (k *testKubeCtl) ExpectOutput(matcher types.GomegaMatcher, args ...string) {
+	o, _ := k.Run(args...)
+	Expect(o).To(matcher)
 }
 
-func (k *testKubeCtl) RunJsonPathTmpl(tmpl string, args ...string) string {
-	o, _ := k.WithTemplate(jsonPathTemplate, tmpl).Run(args...)
-	return o
+func GoTmpl(tmpl string) kubeCtlTemplate {
+	return kubeCtlTemplate{
+		tmplType:   goTemplate,
+		tmplString: tmpl,
+	}
+}
+
+func JsonPathTmpl(tmpl string) kubeCtlTemplate {
+	return kubeCtlTemplate{
+		tmplType:   jsonPathTemplate,
+		tmplString: tmpl,
+	}
 }
 
 func readToString(r io.Reader) string {
