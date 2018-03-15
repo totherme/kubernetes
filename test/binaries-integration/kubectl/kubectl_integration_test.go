@@ -39,38 +39,40 @@ var _ = Describe("KubectlIntegration", func() {
 			kubeCtl.Run("get", "pods", "-o", "json")
 		})
 
-		Context("with a go-template specified", func() {
+		It("can query the pod name via go-template", func() {
 			// kube::test::get_object_assert pods '{{range.items}}{{$id_field}}:{{end}}' 'valid-pod:'
-			It("'get pods' succeeds", func() {
-				Expect(kubeCtl.RunGoTmpl("{{range.items}}{{.metadata.name}}:{{end}}", "get", "pods")).
-					To(Equal("valid-pod:"))
-			})
-			// kube::test::get_object_assert 'pod valid-pod' '{{$id_field}}' 'valid-pod'
-			It("'get pod valid/pod' succeeds", func() {
-				Expect(kubeCtl.RunGoTmpl("{{.metadata.name}}", "get", "pod", "valid-pod")).
-					To(Equal("valid-pod"))
-			})
-			// kube::test::get_object_assert 'pod/valid-pod' '{{$id_field}}' 'valid-pod'
-			It("'get pod/valid-pod' succeeds", func() {
-				Expect(kubeCtl.RunGoTmpl("{{.metadata.name}}", "get", "pod/valid-pod")).
-					To(Equal("valid-pod"))
-			})
-			// kube::test::get_object_assert 'pods/valid-pod' '{{$id_field}}' 'valid-pod'
-			It("'get pods/valid-pod' succeeds", func() {
-				Expect(kubeCtl.RunGoTmpl("{{.metadata.name}}", "get", "pods/valid-pod")).
-					To(Equal("valid-pod"))
-			})
+			Expect(kubeCtl.RunGoTmpl("{{range.items}}{{.metadata.name}}:{{end}}", "get", "pods")).
+				To(Equal("valid-pod:"))
+
+				// kube::test::get_object_assert 'pod valid-pod' '{{$id_field}}' 'valid-pod'
+			Expect(kubeCtl.RunGoTmpl("{{.metadata.name}}", "get", "pod", "valid-pod")).
+				To(Equal("valid-pod"))
+
+				// kube::test::get_object_assert 'pod/valid-pod' '{{$id_field}}' 'valid-pod'
+			Expect(kubeCtl.RunGoTmpl("{{.metadata.name}}", "get", "pod/valid-pod")).
+				To(Equal("valid-pod"))
+
+				// kube::test::get_object_assert 'pods/valid-pod' '{{$id_field}}' 'valid-pod'
+			Expect(kubeCtl.RunGoTmpl("{{.metadata.name}}", "get", "pods/valid-pod")).
+				To(Equal("valid-pod"))
 		})
 
-		Context("with a jsonpath template specified", func() {
+		It("can query the pod name via jsonpath-template", func() {
 			// kube::test::get_object_jsonpath_assert pods "{.items[*]$id_field}" 'valid-pod'
-			It("'get pods' succeeds", func() {
-				Expect(kubeCtl.RunJsonPathTmpl("{.items[*].metadata.name}", "get", "pods")).
-					To(Equal("valid-pod"))
-			})
-			// kube::test::get_object_jsonpath_assert 'pod valid-pod' "{$id_field}" 'valid-pod'
-			// kube::test::get_object_jsonpath_assert 'pod/valid-pod' "{$id_field}" 'valid-pod'
-			// kube::test::get_object_jsonpath_assert 'pods/valid-pod' "{$id_field}" 'valid-pod'
+			Expect(kubeCtl.RunJsonPathTmpl("{.items[*].metadata.name}", "get", "pods")).
+				To(Equal("valid-pod"))
+
+				// kube::test::get_object_jsonpath_assert 'pod valid-pod' "{$id_field}" 'valid-pod'
+			Expect(kubeCtl.RunJsonPathTmpl("{.metadata.name}", "get", "pod", "valid-pod")).
+				To(Equal("valid-pod"))
+
+				// kube::test::get_object_jsonpath_assert 'pod/valid-pod' "{$id_field}" 'valid-pod'
+			Expect(kubeCtl.RunJsonPathTmpl("{.metadata.name}", "get", "pod/valid-pod")).
+				To(Equal("valid-pod"))
+
+				// kube::test::get_object_jsonpath_assert 'pods/valid-pod' "{$id_field}" 'valid-pod'
+			Expect(kubeCtl.RunJsonPathTmpl("{.metadata.name}", "get", "pods/valid-pod")).
+				To(Equal("valid-pod"))
 		})
 	})
 })
