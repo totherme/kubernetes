@@ -123,67 +123,93 @@ func resolveToExecutable(path, message string) string {
 	return realBin
 }
 
-type templateType string
+type outputFormatType string
 
 const (
-	goTemplate       templateType = "go-template"
-	jsonPathTemplate templateType = "jsonpath"
+	goTemplate outputFormatType = "go-template"
+	jsonPath   outputFormatType = "jsonpath"
 )
 
-type kubeCtlTemplate struct {
-	tmplType   templateType
-	tmplString string
+type outputFormat struct {
+	format   outputFormatType
+	template string
 }
 
 type testKubeCtl struct {
-	kubeCtl  *integration.KubeCtl
-	template kubeCtlTemplate
+	kubeCtl       *integration.KubeCtl
+	outputFormat  outputFormat
+	stdoutMatcher types.GomegaMatcher
+	stderrMatcher types.GomegaMatcher
+}
+
+func (k *testKubeCtl) clone() *testKubeCtl {
+	return &testKubeCtl{
+		kubeCtl:       k.kubeCtl,
+		outputFormat:  k.outputFormat,
+		stdoutMatcher: k.stdoutMatcher,
+		stderrMatcher: k.stderrMatcher,
+	}
 }
 
 func (k *testKubeCtl) Run(args ...string) (string, string) {
 	callArgs := []string{}
 	callArgs = append(callArgs, args...)
-	if k.template != (kubeCtlTemplate{}) {
+	if k.outputFormat != (outputFormat{}) {
 		callArgs = append(
 			callArgs,
-			"-o", fmt.Sprintf("%s=%s", k.template.tmplType, k.template.tmplString),
+			"-o", fmt.Sprintf("%s=%s", k.outputFormat.format, k.outputFormat.template),
 		)
 	}
 
-	stdout, stderr, err := k.kubeCtl.Run(callArgs...)
-	Expect(err).NotTo(HaveOccurred(), "Stdout: %s\nStderr: %s", stdout, stderr)
-	return readToString(stdout), readToString(stderr)
+	o, e, err := k.kubeCtl.Run(callArgs...)
+	stdout, stderr := readToString(o), readToString(e)
+
+	ExpectWithOffset(1, err).NotTo(HaveOccurred(), "Stdout: %s\nStderr: %s", stdout, stderr)
+
+	if m := k.stdoutMatcher; m != nil {
+		ExpectWithOffset(1, stdout).To(m)
+	}
+	if m := k.stderrMatcher; m != nil {
+		ExpectWithOffset(1, stderr).To(m)
+	}
+
+	return stdout, stderr
 }
 
-func (k *testKubeCtl) SetTmpl(tmpl kubeCtlTemplate) *testKubeCtl {
-	clone := &testKubeCtl{
-		kubeCtl:  k.kubeCtl,
-		template: tmpl,
-	}
+func (k *testKubeCtl) SetOutputFormat(fmt outputFormat) *testKubeCtl {
+	clone := k.clone()
+	clone.outputFormat = fmt
 	return clone
 }
 
-func (k *testKubeCtl) ExpectOutput(matcher types.GomegaMatcher, args ...string) {
-	o, _ := k.Run(args...)
-	Expect(o).To(matcher)
+func (k *testKubeCtl) ExpectStdoutTo(matcher types.GomegaMatcher) *testKubeCtl {
+	clone := k.clone()
+	clone.stdoutMatcher = matcher
+	return clone
 }
 
-func GoTmpl(tmpl string) kubeCtlTemplate {
-	return kubeCtlTemplate{
-		tmplType:   goTemplate,
-		tmplString: tmpl,
+func (k *testKubeCtl) ExpectStderrTo(matcher types.GomegaMatcher) *testKubeCtl {
+	clone := k.clone()
+	clone.stderrMatcher = matcher
+	return clone
+}
+
+func GoTemplate(tmpl string) outputFormat {
+	return outputFormat{
+		format:   goTemplate,
+		template: tmpl,
 	}
 }
 
-func JsonPathTmpl(tmpl string) kubeCtlTemplate {
-	return kubeCtlTemplate{
-		tmplType:   jsonPathTemplate,
-		tmplString: tmpl,
+func JsonPath(tmpl string) outputFormat {
+	return outputFormat{
+		format:   jsonPath,
+		template: tmpl,
 	}
 }
 
 func readToString(r io.Reader) string {
 	b, err := ioutil.ReadAll(r)
-	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+	ExpectWithOffset(2, err).NotTo(HaveOccurred())
 	return string(b)
 }
