@@ -101,24 +101,16 @@ func cdUp(path string, count int) string {
 }
 
 func resolveToExecutable(path, message string) string {
-	Expect(path).To(BeAnExistingFile(),
-		fmt.Sprintf("Expected to find a binary at '%s'. %s", path, message),
-	)
+	Expect(path).To(BeAnExistingFile(), "Expected to find a binary at '%s'. %s", path, message)
 
 	realBin, err := filepath.EvalSymlinks(path)
-	Expect(err).NotTo(HaveOccurred(),
-		fmt.Sprintf("Could not find link target for '%s'", path),
-	)
+	Expect(err).NotTo(HaveOccurred(), "Could not find link target for '%s'", path)
 
 	stat, err := os.Stat(realBin)
-	Expect(err).NotTo(HaveOccurred(),
-		fmt.Sprintf("Could not get permissions for '%s'", realBin),
-	)
+	Expect(err).NotTo(HaveOccurred(), "Could not get permissions for '%s'", realBin)
 
 	isExecutable := ((stat.Mode() | 0111) != 0)
-	Expect(isExecutable).To(BeTrue(),
-		fmt.Sprintf("'%s' is not executable", realBin),
-	)
+	Expect(isExecutable).To(BeTrue(), "'%s' is not executable", realBin)
 
 	return realBin
 }
