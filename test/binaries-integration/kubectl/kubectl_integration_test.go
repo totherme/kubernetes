@@ -1,54 +1,11 @@
 package kubectl_test
 
 import (
-	"fmt"
-	"io"
-	"io/ioutil"
-
-	"github.com/kubernetes-sig-testing/frameworks/integration"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("KubectlIntegration", func() {
-	var (
-		kubeCtl *testKubeCtl
-		cp      *integration.ControlPlane
-	)
-	BeforeEach(func() {
-		// admissionPluginsEnabled := "Initializers,LimitRanger,ResourceQuota"
-		// admissionPluginsDisabled := "ServiceAccount,PersistentVolumeLabel,DefaultStorageClass,DefaultTolerationSeconds,MutatingAdmissionWebhook,ValidatingAdmissionWebhook"
-		admissionPluginsEnabled := ""
-		admissionPluginsDisabled := "ServiceAccount"
-
-		cp = &integration.ControlPlane{}
-		cp.APIServer = &integration.APIServer{
-			Path: apiServerPath,
-			Args: []string{
-				// This will get a bit nices as soon as
-				// https://github.com/kubernetes-sigs/testing_frameworks/pull/41 is
-				// merged
-				"--etcd-servers={{ if .EtcdURL }}{{ .EtcdURL.String }}{{ end }}",
-				"--cert-dir={{ .CertDir }}",
-				"--insecure-port={{ if .URL }}{{ .URL.Port }}{{ end }}",
-				"--insecure-bind-address={{ if .URL }}{{ .URL.Hostname }}{{ end }}",
-				"--secure-port=0",
-				"--enable-admission-plugins=" + admissionPluginsEnabled,
-				"--disable-admission-plugins=" + admissionPluginsDisabled,
-			},
-		}
-		cp.Etcd = &integration.Etcd{Path: etcdPath}
-
-		Expect(cp.Start()).To(Succeed())
-
-		k := cp.KubeCtl()
-		k.Path = kubeCtlPath
-		kubeCtl = &testKubeCtl{kubeCtl: k}
-	})
-	AfterEach(func() {
-		Expect(cp.Stop()).To(Succeed())
-	})
-
 	It("can run 'get pods'", func() {
 		stdout, stderr := kubeCtl.Run("get", "pods")
 		Expect(stderr).To(ContainSubstring("No resources found."))
@@ -64,6 +21,9 @@ var _ = Describe("KubectlIntegration", func() {
 	})
 
 	Context("with a valid pod deployed", func() {
+		AfterEach(func() {
+			restartControlPlane()
+		})
 		BeforeEach(func() {
 			specFilePath := getKubeRoot() + "/test/fixtures/doc-yaml/admin/limitrange/valid-pod.yaml"
 			Expect(specFilePath).To(BeARegularFile())
@@ -114,51 +74,3 @@ var _ = Describe("KubectlIntegration", func() {
 		})
 	})
 })
-
-type templateType string
-
-const (
-	goTemplate       templateType = "go-template"
-	jsonPathTemplate templateType = "jsonpath"
-)
-
-type testKubeCtl struct {
-	kubeCtl  *integration.KubeCtl
-	template string
-}
-
-func (k *testKubeCtl) Run(args ...string) (string, string) {
-	callArgs := []string{}
-	callArgs = append(callArgs, args...)
-	if k.template != "" {
-		callArgs = append(callArgs, "-o", k.template)
-	}
-
-	stdout, stderr, err := k.kubeCtl.Run(callArgs...)
-	Expect(err).NotTo(HaveOccurred(), "Stdout: %s\nStderr: %s", stdout, stderr)
-	return readToString(stdout), readToString(stderr)
-}
-
-func (k *testKubeCtl) WithTemplate(ttype templateType, tmpl string) *testKubeCtl {
-	clone := &testKubeCtl{
-		kubeCtl:  k.kubeCtl,
-		template: fmt.Sprintf("%s=%s", ttype, tmpl),
-	}
-	return clone
-}
-
-func (k *testKubeCtl) RunGoTmpl(tmpl string, args ...string) string {
-	o, _ := k.WithTemplate(goTemplate, tmpl).Run(args...)
-	return o
-}
-
-func (k *testKubeCtl) RunJsonPathTmpl(tmpl string, args ...string) string {
-	o, _ := k.WithTemplate(jsonPathTemplate, tmpl).Run(args...)
-	return o
-}
-
-func readToString(r io.Reader) string {
-	b, err := ioutil.ReadAll(r)
-	ExpectWithOffset(1, err).NotTo(HaveOccurred())
-	return string(b)
-}
