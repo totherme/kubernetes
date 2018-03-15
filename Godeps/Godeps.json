@@ -1,6 +1,6 @@
 {
 	"ImportPath": "k8s.io/kubernetes",
-	"GoVersion": "go1.9",
+	"GoVersion": "go1.10",
 	"GodepVersion": "v79",
 	"Packages": [
 		"github.com/onsi/ginkgo/ginkgo",
@@ -2034,6 +2034,14 @@
 			"Rev": "6807e777504f54ad073ecef66747de158294b639"
 		},
 		{
+			"ImportPath": "github.com/kubernetes-sig-testing/frameworks/integration",
+			"Rev": "2105dfc298400b0e307a6f2ca81bfef413cae1b8"
+		},
+		{
+			"ImportPath": "github.com/kubernetes-sig-testing/frameworks/integration/internal",
+			"Rev": "2105dfc298400b0e307a6f2ca81bfef413cae1b8"
+		},
+		{
 			"ImportPath": "github.com/libopenstorage/openstorage/api",
 			"Rev": "093a0c3888753c2056e7373183693d670c6bba01"
 		},
@@ -2271,6 +2279,16 @@
 		},
 		{
 			"ImportPath": "github.com/onsi/gomega/format",
+			"Comment": "v1.0-122-gd59fa0a",
+			"Rev": "d59fa0ac68bb5dd932ee8d24eed631cdd519efc3"
+		},
+		{
+			"ImportPath": "github.com/onsi/gomega/gbytes",
+			"Comment": "v1.0-122-gd59fa0a",
+			"Rev": "d59fa0ac68bb5dd932ee8d24eed631cdd519efc3"
+		},
+		{
+			"ImportPath": "github.com/onsi/gomega/gexec",
 			"Comment": "v1.0-122-gd59fa0a",
 			"Rev": "d59fa0ac68bb5dd932ee8d24eed631cdd519efc3"
 		},
@@ -2880,6 +2898,10 @@
 			"Rev": "1c05540f6879653db88113bc4a2b70aec4bd491f"
 		},
 		{
+			"ImportPath": "golang.org/x/net/html/charset",
+			"Rev": "1c05540f6879653db88113bc4a2b70aec4bd491f"
+		},
+		{
 			"ImportPath": "golang.org/x/net/http2",
 			"Rev": "1c05540f6879653db88113bc4a2b70aec4bd491f"
 		},
@@ -2952,11 +2974,35 @@
 			"Rev": "b19bf474d317b857955b12035d2c5acb57ce8b01"
 		},
 		{
+			"ImportPath": "golang.org/x/text/encoding/charmap",
+			"Rev": "b19bf474d317b857955b12035d2c5acb57ce8b01"
+		},
+		{
+			"ImportPath": "golang.org/x/text/encoding/htmlindex",
+			"Rev": "b19bf474d317b857955b12035d2c5acb57ce8b01"
+		},
+		{
 			"ImportPath": "golang.org/x/text/encoding/internal",
 			"Rev": "b19bf474d317b857955b12035d2c5acb57ce8b01"
 		},
 		{
 			"ImportPath": "golang.org/x/text/encoding/internal/identifier",
+			"Rev": "b19bf474d317b857955b12035d2c5acb57ce8b01"
+		},
+		{
+			"ImportPath": "golang.org/x/text/encoding/japanese",
+			"Rev": "b19bf474d317b857955b12035d2c5acb57ce8b01"
+		},
+		{
+			"ImportPath": "golang.org/x/text/encoding/korean",
+			"Rev": "b19bf474d317b857955b12035d2c5acb57ce8b01"
+		},
+		{
+			"ImportPath": "golang.org/x/text/encoding/simplifiedchinese",
+			"Rev": "b19bf474d317b857955b12035d2c5acb57ce8b01"
+		},
+		{
+			"ImportPath": "golang.org/x/text/encoding/traditionalchinese",
 			"Rev": "b19bf474d317b857955b12035d2c5acb57ce8b01"
 		},
 		{

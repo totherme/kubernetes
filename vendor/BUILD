@@ -275,6 +275,7 @@ filegroup(
         "//vendor/github.com/kr/pretty:all-srcs",
         "//vendor/github.com/kr/pty:all-srcs",
         "//vendor/github.com/kr/text:all-srcs",
+        "//vendor/github.com/kubernetes-sig-testing/frameworks/integration:all-srcs",
         "//vendor/github.com/libopenstorage/openstorage/api:all-srcs",
         "//vendor/github.com/libopenstorage/openstorage/pkg/parser:all-srcs",
         "//vendor/github.com/libopenstorage/openstorage/pkg/units:all-srcs",
