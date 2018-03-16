@@ -123,4 +123,24 @@ var _ = Describe("KubectlIntegration", func() {
 			})
 		})
 	})
+
+	Context("namespace configured", func() {
+		It("succceeds", func() {
+			// kube::test::get_object_assert 'namespaces' '{{range.items}}{{ if eq $id_field \"test-kubectl-describe-pod\" }}found{{end}}{{end}}:' ':'
+			By("making sure describing a non-existant namespace won't fail")
+			kubeCtl.WithArgs("get", "namespaces").
+				WithFormat(GoTemplate(`{{range.items}}{{ if eq .metadata.name "test-kubectl-describe-pod" }}found{{end}}{{end}}:`)).
+				ExpectStdoutTo(Equal(":")).Succeeds()
+
+			// kubectl create namespace test-kubectl-describe-pod
+			By("creating a namespace")
+			kubeCtl.WithArgs("create", "namespace", "test-kubectl-describe-pod").
+				Succeeds()
+
+			// kube::test::get_object_assert 'namespaces/test-kubectl-describe-pod' "{{$id_field}}" 'test-kubectl-describe-pod'
+			By("enuring the namespace exists now")
+			kubeCtl.WithArgs("get", "namespace", "test-kubectl-describe-pod").
+				WithFormat(GoTemplate("{{.metadata.name}}")).Succeeds()
+		})
+	})
 })
