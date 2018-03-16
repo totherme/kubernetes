@@ -1,6 +1,8 @@
 package kubectl_test
 
 import (
+	"time"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
@@ -143,4 +145,39 @@ var _ = Describe("KubectlIntegration", func() {
 				WithFormat(GoTemplate("{{.metadata.name}}")).Succeeds()
 		})
 	})
+
+	Context("in the default namespace", func() {
+		BeforeEach(func() {
+			restartControlPlane()
+		})
+		It("all expected resource APIs are found", func() {
+			containSomeStuffButNotTheOther := And(
+				ContainAll(
+					"/api/v1/namespaces/default/pods 200 OK",
+					"/api/v1/namespaces/default/replicationcontrollers 200 OK",
+					"/api/v1/namespaces/default/services 200 OK",
+					"/apis/apps/v1/namespaces/default/daemonsets 200 OK",
+					"/apis/apps/v1/namespaces/default/deployments 200 OK",
+					"/apis/apps/v1/namespaces/default/replicasets 200 OK",
+					"/apis/apps/v1/namespaces/default/statefulsets 200 OK",
+					"/apis/autoscaling/v1/namespaces/default/horizontalpodautoscalers 200",
+					"/apis/batch/v1/namespaces/default/jobs 200 OK",
+				),
+				NotContainAny(
+					"/apis/extensions/v1beta1/namespaces/default/daemonsets 200 OK",
+					"/apis/extensions/v1beta1/namespaces/default/deployments 200 OK",
+					"/apis/extensions/v1beta1/namespaces/default/replicasets 200 OK",
+				),
+			)
+
+			// TODO: 2 options:
+			//    - do not restart the control plane, but delete the clients discover cache
+			//    - restart the control plane and wait a bit until the control plane has loaded
+			//      all its APIs
+			time.Sleep(time.Millisecond * 500) // oh my ... why?
+			kubeCtl.WithArgs("--v=6", "--namespace", "default", "get", "all", "--chunk-size=0").
+				ExpectStderrTo(containSomeStuffButNotTheOther).Succeeds()
+		})
+	})
+
 })

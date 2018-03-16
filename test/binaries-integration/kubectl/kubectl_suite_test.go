@@ -231,6 +231,14 @@ func ContainAll(wanted ...string) types.GomegaMatcher {
 	return And(matchers...)
 }
 
+func NotContainAny(notWanted ...string) types.GomegaMatcher {
+	matchers := make([]types.GomegaMatcher, len(notWanted))
+	for i, s := range notWanted {
+		matchers[i] = ContainSubstring(s)
+	}
+	return Not(Or(matchers...))
+}
+
 func HaveEvents() types.GomegaMatcher {
 	return Or(
 		ContainSubstring("No events."),
