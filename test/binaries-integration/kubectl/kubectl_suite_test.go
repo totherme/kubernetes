@@ -145,12 +145,22 @@ func (k *testKubeCtl) clone() *testKubeCtl {
 	}
 }
 
+func (k *testKubeCtl) Clear() *testKubeCtl {
+	return &testKubeCtl{
+		kubeCtl: k.kubeCtl,
+	}
+}
+
 func (k *testKubeCtl) Succeeds() {
-	k.Run()
+	k.run()
 }
 
 func (k *testKubeCtl) Do() {
-	k.Run()
+	k.run()
+}
+
+func (k *testKubeCtl) Run(args ...string) (string, string) {
+	return k.run(args...)
 }
 
 func (k *testKubeCtl) WithArgs(args ...string) *testKubeCtl {
@@ -159,7 +169,22 @@ func (k *testKubeCtl) WithArgs(args ...string) *testKubeCtl {
 	return clone
 }
 
-func (k *testKubeCtl) Run(args ...string) (string, string) {
+func (k *testKubeCtl) run(args ...string) (string, string) {
+	stdout, stderr, err := k.getOutputs(args...)
+
+	ExpectWithOffset(2, err).NotTo(HaveOccurred(), "Stdout: %s\nStderr: %s", stdout, stderr)
+
+	if m := k.stdoutMatcher; m != nil {
+		ExpectWithOffset(2, stdout).To(m)
+	}
+	if m := k.stderrMatcher; m != nil {
+		ExpectWithOffset(2, stderr).To(m)
+	}
+
+	return stdout, stderr
+}
+
+func (k *testKubeCtl) getOutputs(args ...string) (string, string, error) {
 	callArgs := k.args
 	callArgs = append(callArgs, args...)
 
@@ -170,19 +195,8 @@ func (k *testKubeCtl) Run(args ...string) (string, string) {
 		)
 	}
 
-	o, e, err := k.kubeCtl.Run(callArgs...)
-	stdout, stderr := readToString(o), readToString(e)
-
-	ExpectWithOffset(1, err).NotTo(HaveOccurred(), "Stdout: %s\nStderr: %s", stdout, stderr)
-
-	if m := k.stdoutMatcher; m != nil {
-		ExpectWithOffset(1, stdout).To(m)
-	}
-	if m := k.stderrMatcher; m != nil {
-		ExpectWithOffset(1, stderr).To(m)
-	}
-
-	return stdout, stderr
+	stdout, stderr, err := k.kubeCtl.Run(callArgs...)
+	return readToString(stdout), readToString(stderr), err
 }
 
 func (k *testKubeCtl) WithFormat(fmt outputFormat) *testKubeCtl {
