@@ -145,8 +145,12 @@ func (k *testKubeCtl) clone() *testKubeCtl {
 	}
 }
 
-func (k *testKubeCtl) Do() (string, string) {
-	return k.Run()
+func (k *testKubeCtl) Succeeds() {
+	k.Run()
+}
+
+func (k *testKubeCtl) Do() {
+	k.Run()
 }
 
 func (k *testKubeCtl) WithArgs(args ...string) *testKubeCtl {
