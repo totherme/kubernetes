@@ -3,6 +3,7 @@ package kubectl_test
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/types"
 )
 
 var _ = Describe("KubectlIntegration", func() {
@@ -17,7 +18,7 @@ var _ = Describe("KubectlIntegration", func() {
 		It("'get pods' does not fail", func() {
 			// kube::test::get_object_assert pods "{{range.items}}{{$id_field}}:{{end}}" ''
 			kubeCtl.
-				SetOutputFormat(GoTemplate("{{range.items}}{{.metadata.name}}:{{end}}")).
+				WithFormat(GoTemplate("{{range.items}}{{.metadata.name}}:{{end}}")).
 				ExpectStdoutTo(Equal("")).
 				Run("get", "pods")
 		})
@@ -43,7 +44,7 @@ var _ = Describe("KubectlIntegration", func() {
 			Context("using go-template", func() {
 				It("succeeds for a list of pods", func() {
 					By("Setting the output go-template")
-					kubeCtl = kubeCtl.SetOutputFormat(GoTemplate("{{range.items}}{{.metadata.name}}:{{end}}"))
+					kubeCtl = kubeCtl.WithFormat(GoTemplate("{{range.items}}{{.metadata.name}}:{{end}}"))
 
 					By("checking the templated output")
 					// kube::test::get_object_assert pods '{{range.items}}{{$id_field}}:{{end}}' 'valid-pod:'
@@ -52,7 +53,7 @@ var _ = Describe("KubectlIntegration", func() {
 
 				It("succeeds for single pods", func() {
 					By("Setting the output go-template")
-					kubeCtl = kubeCtl.SetOutputFormat(GoTemplate("{{.metadata.name}}"))
+					kubeCtl = kubeCtl.WithFormat(GoTemplate("{{.metadata.name}}"))
 
 					By("checking the templated output")
 					// kube::test::get_object_assert 'pod valid-pod' '{{$id_field}}' 'valid-pod'
@@ -67,7 +68,7 @@ var _ = Describe("KubectlIntegration", func() {
 			Context("using jsonPath", func() {
 				It("succeeds for a list of pods", func() {
 					By("setting up the jsonPath expression")
-					kubeCtl = kubeCtl.SetOutputFormat(JsonPath("{.items[*].metadata.name}"))
+					kubeCtl = kubeCtl.WithFormat(JsonPath("{.items[*].metadata.name}"))
 
 					By("checking the templated output")
 					// kube::test::get_object_jsonpath_assert pods "{.items[*]$id_field}" 'valid-pod'
@@ -76,7 +77,7 @@ var _ = Describe("KubectlIntegration", func() {
 
 				It("succeeds for single pods", func() {
 					By("setting up the jsonPath expression")
-					kubeCtl = kubeCtl.SetOutputFormat(JsonPath("{.metadata.name}"))
+					kubeCtl = kubeCtl.WithFormat(JsonPath("{.metadata.name}"))
 
 					By("checking the templated output")
 					// kube::test::get_object_jsonpath_assert 'pod valid-pod' "{$id_field}" 'valid-pod'
@@ -90,31 +91,36 @@ var _ = Describe("KubectlIntegration", func() {
 		})
 
 		Context("describing resources", func() {
-			It("succeeds", func() { // should print detailed information", func() {
+			var haveImportantLabels types.GomegaMatcher
+			BeforeEach(func() {
+				haveImportantLabels = ContainAll("Name:", "Image:", "Node:", "Labels:", "Status:")
+			})
+			It("succeeds", func() {
 				// kube::test::describe_object_assert pods 'valid-pod' "Name:" "Image:" "Node:" "Labels:" "Status:"
 				By("printing detailed information")
-				containAll := ContainAll("Name:", "Image:", "Node:", "Labels:", "Status:")
-				kubeCtl.ExpectStdoutTo(containAll).Run("describe", "pods", "valid-pod")
+				kubeCtl.WithArgs("describe", "pods", "valid-pod").
+					ExpectStdoutTo(haveImportantLabels).Do()
 
 				// kube::test::describe_object_events_assert pods 'valid-pod'
 				By("printing events information by default")
-				kubeCtl.ExpectStdoutTo(HaveEvents()).
-					Run("describe", "--show-events=true", "pods", "valid-pod")
+				kubeCtl.WithArgs("describe", "--show-events=true", "pods", "valid-pod").
+					ExpectStdoutTo(HaveEvents()).Do()
 
 				// kube::test::describe_object_events_assert pods 'valid-pod' false
 				By("not printing events information when show-events=false")
-				kubeCtl.ExpectStdoutTo(NotHaveEvents()).
-					Run("describe", "--show-events=false", "pods", "valid-pod")
+				kubeCtl.WithArgs("describe", "--show-events=false", "pods", "valid-pod").
+					ExpectStdoutTo(NotHaveEvents()).Do()
 
 				// kube::test::describe_object_events_assert pods 'valid-pod' true
 				By("printing events information when show-events=true")
-				kubeCtl.ExpectStdoutTo(HaveEvents()).
-					Run("describe", "--show-events=true", "pods", "valid-pod")
+				kubeCtl.WithArgs("describe", "--show-events=true", "pods", "valid-pod").
+					ExpectStdoutTo(HaveEvents()).Do()
+			})
+
+			It("succeeds describing resource only", func() {
+				// kube::test::describe_resource_assert pods "Name:" "Image:" "Node:" "Labels:" "Status:"
+				kubeCtl.WithArgs("describe", "pods").ExpectStdoutTo(haveImportantLabels).Do()
 			})
 		})
-
-		// It("Describe command (resource only) should print detailed information", func() {
-		// 	// kube::test::describe_resource_assert pods "Name:" "Image:" "Node:" "Labels:" "Status:"
-		// })
 	})
 })

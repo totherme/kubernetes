@@ -129,6 +129,7 @@ type outputFormat struct {
 
 type testKubeCtl struct {
 	kubeCtl       *integration.KubeCtl
+	args          []string
 	outputFormat  outputFormat
 	stdoutMatcher types.GomegaMatcher
 	stderrMatcher types.GomegaMatcher
@@ -137,15 +138,27 @@ type testKubeCtl struct {
 func (k *testKubeCtl) clone() *testKubeCtl {
 	return &testKubeCtl{
 		kubeCtl:       k.kubeCtl,
+		args:          k.args,
 		outputFormat:  k.outputFormat,
 		stdoutMatcher: k.stdoutMatcher,
 		stderrMatcher: k.stderrMatcher,
 	}
 }
 
+func (k *testKubeCtl) Do() (string, string) {
+	return k.Run()
+}
+
+func (k *testKubeCtl) WithArgs(args ...string) *testKubeCtl {
+	clone := k.clone()
+	clone.args = args
+	return clone
+}
+
 func (k *testKubeCtl) Run(args ...string) (string, string) {
-	callArgs := []string{}
+	callArgs := k.args
 	callArgs = append(callArgs, args...)
+
 	if k.outputFormat != (outputFormat{}) {
 		callArgs = append(
 			callArgs,
@@ -168,7 +181,7 @@ func (k *testKubeCtl) Run(args ...string) (string, string) {
 	return stdout, stderr
 }
 
-func (k *testKubeCtl) SetOutputFormat(fmt outputFormat) *testKubeCtl {
+func (k *testKubeCtl) WithFormat(fmt outputFormat) *testKubeCtl {
 	clone := k.clone()
 	clone.outputFormat = fmt
 	return clone
