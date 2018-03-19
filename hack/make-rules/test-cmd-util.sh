@@ -322,33 +322,37 @@ run_pod_tests() {
 
   kube::log::status "Testing kubectl(v1:pods)"
 
+  # Lines appended with PBI mean, that those test have already been
+  # ported to the new integration test framework in `./test/binaries-integration/`
+  # Those can be run by `make binaries-integration`.
+
   ### Create POD valid-pod from JSON
   # Pre-condition: no POD exists
   create_and_use_new_namespace
-  kube::test::get_object_assert pods "{{range.items}}{{$id_field}}:{{end}}" ''
-  # Command
-  kubectl create "${kube_flags[@]}" -f test/fixtures/doc-yaml/admin/limitrange/valid-pod.yaml
-  # Post-condition: valid-pod POD is created
-  kubectl get "${kube_flags[@]}" pods -o json
-  kube::test::get_object_assert pods "{{range.items}}{{$id_field}}:{{end}}" 'valid-pod:'
-  kube::test::get_object_assert 'pod valid-pod' "{{$id_field}}" 'valid-pod'
-  kube::test::get_object_assert 'pod/valid-pod' "{{$id_field}}" 'valid-pod'
-  kube::test::get_object_assert 'pods/valid-pod' "{{$id_field}}" 'valid-pod'
-  # Repeat above test using jsonpath template
-  kube::test::get_object_jsonpath_assert pods "{.items[*]$id_field}" 'valid-pod'
-  kube::test::get_object_jsonpath_assert 'pod valid-pod' "{$id_field}" 'valid-pod'
-  kube::test::get_object_jsonpath_assert 'pod/valid-pod' "{$id_field}" 'valid-pod'
-  kube::test::get_object_jsonpath_assert 'pods/valid-pod' "{$id_field}" 'valid-pod'
-  # Describe command should print detailed information
-  kube::test::describe_object_assert pods 'valid-pod' "Name:" "Image:" "Node:" "Labels:" "Status:"
-  # Describe command should print events information by default
-  kube::test::describe_object_events_assert pods 'valid-pod'
-  # Describe command should not print events information when show-events=false
-  kube::test::describe_object_events_assert pods 'valid-pod' false
-  # Describe command should print events information when show-events=true
-  kube::test::describe_object_events_assert pods 'valid-pod' true
-  # Describe command (resource only) should print detailed information
-  kube::test::describe_resource_assert pods "Name:" "Image:" "Node:" "Labels:" "Status:"
+  kube::test::get_object_assert pods "{{range.items}}{{$id_field}}:{{end}}" '' # PBI
+  # Command # PBI
+  kubectl create "${kube_flags[@]}" -f test/fixtures/doc-yaml/admin/limitrange/valid-pod.yaml # PBI
+  # Post-condition: valid-pod POD is created # PBI
+  kubectl get "${kube_flags[@]}" pods -o json # PBI
+  kube::test::get_object_assert pods "{{range.items}}{{$id_field}}:{{end}}" 'valid-pod:' # PBI
+  kube::test::get_object_assert 'pod valid-pod' "{{$id_field}}" 'valid-pod' # PBI
+  kube::test::get_object_assert 'pod/valid-pod' "{{$id_field}}" 'valid-pod' # PBI
+  kube::test::get_object_assert 'pods/valid-pod' "{{$id_field}}" 'valid-pod' # PBI
+  # Repeat above test using jsonpath template # PBI
+  kube::test::get_object_jsonpath_assert pods "{.items[*]$id_field}" 'valid-pod' # PBI
+  kube::test::get_object_jsonpath_assert 'pod valid-pod' "{$id_field}" 'valid-pod' # PBI
+  kube::test::get_object_jsonpath_assert 'pod/valid-pod' "{$id_field}" 'valid-pod' # PBI
+  kube::test::get_object_jsonpath_assert 'pods/valid-pod' "{$id_field}" 'valid-pod' # PBI
+  # Describe command should print detailed information # PBI
+  kube::test::describe_object_assert pods 'valid-pod' "Name:" "Image:" "Node:" "Labels:" "Status:" # PBI
+  # Describe command should print events information by default # PBI
+  kube::test::describe_object_events_assert pods 'valid-pod' # PBI
+  # Describe command should not print events information when show-events=false # PBI
+  kube::test::describe_object_events_assert pods 'valid-pod' false # PBI
+  # Describe command should print events information when show-events=true # PBI
+  kube::test::describe_object_events_assert pods 'valid-pod' true # PBI
+  # Describe command (resource only) should print detailed information # PBI
+  kube::test::describe_resource_assert pods "Name:" "Image:" "Node:" "Labels:" "Status:" # PBI
 
   # Describe command should print events information by default
   kube::test::describe_resource_events_assert pods
@@ -465,11 +469,11 @@ run_pod_tests() {
   # Detailed tests for describe pod output
     ### Create a new namespace
   # Pre-condition: the test-secrets namespace does not exist
-  kube::test::get_object_assert 'namespaces' '{{range.items}}{{ if eq $id_field \"test-kubectl-describe-pod\" }}found{{end}}{{end}}:' ':'
-  # Command
-  kubectl create namespace test-kubectl-describe-pod
-  # Post-condition: namespace 'test-secrets' is created.
-  kube::test::get_object_assert 'namespaces/test-kubectl-describe-pod' "{{$id_field}}" 'test-kubectl-describe-pod'
+  kube::test::get_object_assert 'namespaces' '{{range.items}}{{ if eq $id_field \"test-kubectl-describe-pod\" }}found{{end}}{{end}}:' ':' # PBI
+  # Command # PBI
+  kubectl create namespace test-kubectl-describe-pod # PBI
+  # Post-condition: namespace 'test-secrets' is created. # PBI
+  kube::test::get_object_assert 'namespaces/test-kubectl-describe-pod' "{{$id_field}}" 'test-kubectl-describe-pod' # PBI
 
   ### Create a generic secret
   # Pre-condition: no SECRET exists
@@ -1514,21 +1518,21 @@ run_kubectl_get_tests() {
     exit 1
   fi
 
-  ### Test kubectl get all
-  output_message=$(kubectl --v=6 --namespace default get all --chunk-size=0 2>&1 "${kube_flags[@]}")
-  # Post-condition: Check if we get 200 OK from all the url(s)
-  kube::test::if_has_string "${output_message}" "/api/v1/namespaces/default/pods 200 OK"
-  kube::test::if_has_string "${output_message}" "/api/v1/namespaces/default/replicationcontrollers 200 OK"
-  kube::test::if_has_string "${output_message}" "/api/v1/namespaces/default/services 200 OK"
-  kube::test::if_has_string "${output_message}" "/apis/apps/v1/namespaces/default/daemonsets 200 OK"
-  kube::test::if_has_string "${output_message}" "/apis/apps/v1/namespaces/default/deployments 200 OK"
-  kube::test::if_has_string "${output_message}" "/apis/apps/v1/namespaces/default/replicasets 200 OK"
-  kube::test::if_has_string "${output_message}" "/apis/apps/v1/namespaces/default/statefulsets 200 OK"
-  kube::test::if_has_string "${output_message}" "/apis/autoscaling/v1/namespaces/default/horizontalpodautoscalers 200"
-  kube::test::if_has_string "${output_message}" "/apis/batch/v1/namespaces/default/jobs 200 OK"
-  kube::test::if_has_not_string "${output_message}" "/apis/extensions/v1beta1/namespaces/default/daemonsets 200 OK"
-  kube::test::if_has_not_string "${output_message}" "/apis/extensions/v1beta1/namespaces/default/deployments 200 OK"
-  kube::test::if_has_not_string "${output_message}" "/apis/extensions/v1beta1/namespaces/default/replicasets 200 OK"
+  ### Test kubectl get all # PBI
+  output_message=$(kubectl --v=6 --namespace default get all --chunk-size=0 2>&1 "${kube_flags[@]}") # PBI
+  # Post-condition: Check if we get 200 OK from all the url(s) # PBI
+  kube::test::if_has_string "${output_message}" "/api/v1/namespaces/default/pods 200 OK" # PBI
+  kube::test::if_has_string "${output_message}" "/api/v1/namespaces/default/replicationcontrollers 200 OK" # PBI
+  kube::test::if_has_string "${output_message}" "/api/v1/namespaces/default/services 200 OK" # PBI
+  kube::test::if_has_string "${output_message}" "/apis/apps/v1/namespaces/default/daemonsets 200 OK" # PBI
+  kube::test::if_has_string "${output_message}" "/apis/apps/v1/namespaces/default/deployments 200 OK" # PBI
+  kube::test::if_has_string "${output_message}" "/apis/apps/v1/namespaces/default/replicasets 200 OK" # PBI
+  kube::test::if_has_string "${output_message}" "/apis/apps/v1/namespaces/default/statefulsets 200 OK" # PBI
+  kube::test::if_has_string "${output_message}" "/apis/autoscaling/v1/namespaces/default/horizontalpodautoscalers 200" # PBI
+  kube::test::if_has_string "${output_message}" "/apis/batch/v1/namespaces/default/jobs 200 OK" # PBI
+  kube::test::if_has_not_string "${output_message}" "/apis/extensions/v1beta1/namespaces/default/daemonsets 200 OK" # PBI
+  kube::test::if_has_not_string "${output_message}" "/apis/extensions/v1beta1/namespaces/default/deployments 200 OK" # PBI
+  kube::test::if_has_not_string "${output_message}" "/apis/extensions/v1beta1/namespaces/default/replicasets 200 OK" # PBI
 
   ### Test kubectl get chunk size
   output_message=$(kubectl --v=6 get clusterrole --chunk-size=10 2>&1 "${kube_flags[@]}")
