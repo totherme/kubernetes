@@ -1,8 +1,6 @@
 package kubectl_test
 
 import (
-	"time"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
@@ -170,14 +168,8 @@ var _ = Describe("KubectlIntegration", func() {
 				),
 			)
 
-			// TODO: 2 options:
-			//    - do not restart the control plane, but delete the clients discover cache
-			//    - restart the control plane and wait a bit until the control plane has loaded
-			//      all its APIs
-			time.Sleep(time.Millisecond * 500) // oh my ... why?
 			kubeCtl.WithArgs("--v=6", "--namespace", "default", "get", "all", "--chunk-size=0").
 				ExpectStderrTo(containSomeStuffButNotTheOther).Succeeds()
 		})
 	})
-
 })
