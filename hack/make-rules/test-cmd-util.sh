@@ -3872,7 +3872,11 @@ run_assert_categories_tests() {
   set -o errexit
 
   kube::log::status "Testing propagation of categories for resources"
-  output_message=$(kubectl get --raw=/api/v1 | grep -Po '"name":"pods".*?}')
+  GREP="grep"
+  if which ggrep &>/dev/null ; then
+    GREP="ggrep"
+  fi
+  output_message=$(kubectl get --raw=/api/v1 | "$GREP" -Po '"name":"pods".*?}')
   kube::test::if_has_string "${output_message}" '"categories":\["all"\]'
 
   set +o nounset
@@ -4736,7 +4740,11 @@ runTests() {
   # use timestamp as the name of namespace because increasing the variable inside subshell
   # does not affect the value of the variable outside the subshell.
   create_and_use_new_namespace() {
-    namespace_number=$(date +%s%N)
+    DATE="date"
+    if which gdate &>/dev/null ; then
+      DATE="gdate"
+    fi
+    namespace_number=$("$DATE" +%s%N)
     kube::log::status "Creating namespace namespace${namespace_number}"
     kubectl create namespace "namespace${namespace_number}"
     kubectl config set-context "${CONTEXT}" --namespace="namespace${namespace_number}"
