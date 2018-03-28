@@ -1,6 +1,11 @@
 package kubectl_test
 
 import (
+	"encoding/json"
+	"fmt"
+	"regexp"
+	"strings"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
@@ -172,4 +177,158 @@ var _ = Describe("KubectlIntegration", func() {
 				ExpectStderrTo(containSomeStuffButNotTheOther).Succeeds()
 		})
 	})
+
+	FContext("with a client", func() {
+		XIt("succeeds", func() {
+			kubeCtl.
+				Run("get", "--raw", "/version")
+		})
+
+		Context("when testing client versions", func() {
+			var (
+				allVersions       string
+				allVersionsParsed Versions
+			)
+			BeforeEach(func() {
+				var err error
+				allVersions, _ = kubeCtl.Run("version")
+				allVersionsParsed, err = parseAllVersions(allVersions)
+				Expect(err).NotTo(HaveOccurred())
+			})
+			Context("with plain output", func() {
+				var (
+					stdoutWithClientFlag string
+					clientVersion        string
+					serverVersion        string
+				)
+				BeforeEach(func() {
+					stdoutWithClientFlag, _ = kubeCtl.Run("version", "--client")
+					clientVersion = getVersionInfo(allVersions, "Client")
+					serverVersion = getVersionInfo(allVersions, "Server")
+				})
+
+				It("outputs client information", func() {
+					Expect(strings.TrimSpace(stdoutWithClientFlag)).To(Equal(clientVersion))
+				})
+				It("doesn't output server information", func() {
+					Expect(strings.TrimSpace(stdoutWithClientFlag)).NotTo(ContainSubstring(serverVersion))
+				})
+			})
+			Context("with json output for all components", func() {
+				var (
+					stdoutAsJSONString string
+					versions           Versions
+					args               []string
+				)
+				BeforeEach(func() {
+					args = []string{"version", "--output", "json"}
+				})
+
+				JustBeforeEach(func() {
+					stdoutAsJSONString, _ = kubeCtl.Run(args...)
+					versions = Versions{}
+					Expect(json.Unmarshal([]byte(stdoutAsJSONString), &versions)).To(Succeed())
+				})
+				It("outputs correct server information", func() {
+					Expect(allVersionsParsed.ServerVersion).To(Equal(versions.ServerVersion))
+				})
+				It("outputs correct client information", func() {
+					Expect(allVersionsParsed.ClientVersion).To(Equal(versions.ClientVersion))
+				})
+				Context("with --client", func() {
+					BeforeEach(func() {
+						args = []string{"version", "--client", "--output", "json"}
+					})
+					It("outputs correct client information", func() {
+						Expect(allVersionsParsed.ClientVersion).To(Equal(versions.ClientVersion))
+					})
+					It("outputs no server information", func() {
+						Expect(versions.ServerVersion).To(BeNil())
+					})
+				})
+				Context("with --short", func() {
+					BeforeEach(func() {
+						args = []string{"version", "--short", "--output", "json"}
+					})
+
+					It("ignores the --short flag", func() {
+						Expect(allVersionsParsed.ClientVersion).To(Equal(versions.ClientVersion))
+						Expect(allVersionsParsed.ServerVersion).To(Equal(versions.ServerVersion))
+					})
+				})
+			})
+		})
+	})
 })
+
+func getVersionInfo(cmdOutput, component string) string {
+	versionInfo := strings.Split(cmdOutput, "\n")
+	for _, line := range versionInfo {
+		if strings.HasPrefix(line, fmt.Sprintf("%s Version", component)) {
+			return line
+		}
+	}
+	return ""
+}
+
+func parseAllVersions(asString string) (Versions, error) {
+	v := Versions{}
+	versionStrings := strings.Split(asString, "\n")
+
+	for _, s := range versionStrings {
+		if s == "" {
+			continue
+		}
+
+		if strings.HasPrefix(s, "Server Version:") {
+			v.ServerVersion = parseVersion(s)
+			continue
+		}
+
+		if strings.HasPrefix(s, "Client Version:") {
+			v.ClientVersion = parseVersion(s)
+			continue
+		}
+
+		return v, fmt.Errorf("Unkonwn line '%s'", s)
+	}
+	return v, nil
+}
+
+func parseVersion(asString string) *VersionInfo {
+	v := VersionInfo{}
+	find := func(search string) string {
+		re := regexp.MustCompile(search + `:"([^"]*)"`)
+		matches := re.FindStringSubmatch(asString)
+		if len(matches) < 2 {
+			return "<nil>"
+		}
+		return matches[1]
+	}
+	v.Major = find("Major")
+	v.Minor = find("Minor")
+	v.GitVersion = find("GitVersion")
+	v.GitCommit = find("GitCommit")
+	v.GitTreeState = find("GitTreeState")
+	v.BuildDate = find("BuildDate")
+	v.GoVersion = find("GoVersion")
+	v.Compiler = find("Compiler")
+	v.Platform = find("Platform")
+	return &v
+}
+
+type Versions struct {
+	ClientVersion *VersionInfo `json:"clientVersion"`
+	ServerVersion *VersionInfo `json:"serverVersion"`
+}
+type VersionInfo struct {
+	Major        string `json:"major"`
+	Minor        string `json:"minor"`
+	GitVersion   string `json:"gitVersion"`
+	GitCommit    string `json:"gitCommit"`
+	GitTreeState string `json:"gitTreeState"`
+	BuildDate    string `json:"buildDate"`
+	GoVersion    string `json:"goVersion"`
+	Compiler     string `json:"compiler"`
+	Platform     string `json:"platform"`
+}
