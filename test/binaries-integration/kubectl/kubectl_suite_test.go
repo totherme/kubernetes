@@ -145,18 +145,8 @@ func (k *testKubeCtl) clone() *testKubeCtl {
 	}
 }
 
-func (k *testKubeCtl) Clear() *testKubeCtl {
-	return &testKubeCtl{
-		kubeCtl: k.kubeCtl,
-	}
-}
-
-func (k *testKubeCtl) Succeeds() {
-	k.run()
-}
-
-func (k *testKubeCtl) Do() {
-	k.run()
+func (k *testKubeCtl) Succeeds() (string, string) {
+	return k.run()
 }
 
 func (k *testKubeCtl) Run(args ...string) (string, string) {

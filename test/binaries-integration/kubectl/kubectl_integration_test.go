@@ -104,27 +104,27 @@ var _ = Describe("KubectlIntegration", func() {
 				// kube::test::describe_object_assert pods 'valid-pod' "Name:" "Image:" "Node:" "Labels:" "Status:"
 				By("printing detailed information")
 				kubeCtl.WithArgs("describe", "pods", "valid-pod").
-					ExpectStdoutTo(haveImportantLabels).Do()
+					ExpectStdoutTo(haveImportantLabels).Succeeds()
 
 				// kube::test::describe_object_events_assert pods 'valid-pod'
 				By("printing events information by default")
 				kubeCtl.WithArgs("describe", "--show-events=true", "pods", "valid-pod").
-					ExpectStdoutTo(HaveEvents()).Do()
+					ExpectStdoutTo(HaveEvents()).Succeeds()
 
 				// kube::test::describe_object_events_assert pods 'valid-pod' false
 				By("not printing events information when show-events=false")
 				kubeCtl.WithArgs("describe", "--show-events=false", "pods", "valid-pod").
-					ExpectStdoutTo(NotHaveEvents()).Do()
+					ExpectStdoutTo(NotHaveEvents()).Succeeds()
 
 				// kube::test::describe_object_events_assert pods 'valid-pod' true
 				By("printing events information when show-events=true")
 				kubeCtl.WithArgs("describe", "--show-events=true", "pods", "valid-pod").
-					ExpectStdoutTo(HaveEvents()).Do()
+					ExpectStdoutTo(HaveEvents()).Succeeds()
 			})
 
 			It("succeeds describing resource only", func() {
 				// kube::test::describe_resource_assert pods "Name:" "Image:" "Node:" "Labels:" "Status:"
-				kubeCtl.WithArgs("describe", "pods").ExpectStdoutTo(haveImportantLabels).Do()
+				kubeCtl.WithArgs("describe", "pods").ExpectStdoutTo(haveImportantLabels).Succeeds()
 			})
 		})
 	})
